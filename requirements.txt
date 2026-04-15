@@ -1,0 +1,7 @@
+chromadb
+datasets
+fastapi
+openai
+pandas
+python-dotenv
+uvicorn[standard]
