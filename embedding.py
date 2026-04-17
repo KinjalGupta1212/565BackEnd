@@ -2,15 +2,22 @@ import chromadb
 import sqlite3
 from chromadb.config import Settings
 from preprocess import load_data
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from dotenv import load_dotenv
 
+load_dotenv()
 
-chroma_client = chromadb.Client(
-    Settings(persist_directory="./chroma_db")
+chroma_client = chromadb.PersistentClient(
+    path="./chroma_db"
 )
 
 def get_db_vectorstore():
-  collection = chroma_client.get_or_create_collection(name="my_collection")
+  collection = chroma_client.get_or_create_collection(name="data-annotation", embedding_function=SentenceTransformerEmbeddingFunction(
+    model_name="all-MiniLM-L6-v2",
+    device="cpu"
+  ))
   df = load_data()
+
   
   # for each row in the dataframe, we want to make a string like:
   # "Text: row['text'], Platform: row['platform'], "
@@ -38,7 +45,6 @@ def get_db_vectorstore():
     batch_ids = [f"id{num}" for num in range(start_idx, min(end_idx, len(documents)))]
     collection.add(documents=batch_documents, ids=batch_ids)
 
-  chroma_client.persist()
   return collection
 
 if __name__ == "__main__":

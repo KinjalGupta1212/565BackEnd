@@ -2,7 +2,7 @@ import datasets
 
 def load_data():
   # load dataset
-  dataset = datasets.load_dataset('ucberkeley-dlab/measuring-hate-speech', token='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')   
+  dataset = datasets.load_dataset('ucberkeley-dlab/measuring-hate-speech', token='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')   
   df = dataset['train'].to_pandas()
 
   # remove hate_speech_score depending on how we decide to measure accuracy

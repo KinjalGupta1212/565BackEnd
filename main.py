@@ -27,6 +27,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+#will have to add an argument to the 
 @app.post("/chat")
 async def get_answer(query: Query, request: Request):
     agent = request.app.state.agent

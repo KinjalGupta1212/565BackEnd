@@ -85,9 +85,9 @@ import asyncio
 import openai
 import boto3
 from dotenv import load_dotenv
+import chromadb
 
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from chromadb.utils.embedding_functions import HuggingFaceEmbeddingFunction
 
 load_dotenv()
 
@@ -106,17 +106,15 @@ class DataAnnotationRAG:
         # ----------------------------
         # STEP 2: LOAD EMBEDDINGS MODEL
         # ----------------------------
-        embeddings = HuggingFaceEmbeddings(
+        embeddings = HuggingFaceEmbeddingFunction(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
         # ----------------------------
         # STEP 3: LOAD VECTOR DB
         # ----------------------------
-        self.vector_store = Chroma(
-            persist_directory="./chroma_db",
-            embedding_function=embeddings
-        )
+        client = chromadb.PersistentClient(path="./chroma_db")
+        self.collection = client.get_collection(name="data-annotation", embedding_function=embeddings)
 
     # FIXED: must include self
     def download_directory(self, bucket, local_dir):
@@ -135,7 +133,7 @@ class DataAnnotationRAG:
     async def retrieve_context(self, query):
         print(f"[RAG] Retrieving context for query: {query}")
 
-        results = self.vector_store.similarity_search(
+        results = self.collection.similarity_search(
             query,
             k=5
         )
