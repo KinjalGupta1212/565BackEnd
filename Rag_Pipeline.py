@@ -141,21 +141,54 @@ class DataAnnotationRAG:
         context = "\n\n".join([doc.page_content for doc in results])
         return context
 
-    async def get_response(self, user_query, history=None):
+    async def get_response(self, user_query, attributes, history=None):
         context = await self.retrieve_context(user_query)
 
+        llm_subgroups = []
+        
+        llm_suggestions = {}
+
+        attribute_prompts = {"Sentiment": "How would you describe the sentiment of this comment?", 
+                             "Respect": "Is this comment respectful towards the group(s) you previously identified?",
+                             "Insult": "Do you agree or disagree with the following statement: This comment is insulting towards the group(s) you previously identified.",
+                             "Humiliate": "Do you agree or disagree with the following statement: This comment is humiliating towards the group(s) you previously identified.",
+                             "Status": "This comment states that the group(s) you previously identified is:",
+                             "Dehumanize": "Do you agree or disagree with the following statement: This comment dehumanizes the group(s) you previously identified (e.g., by comparing them to an animal).",
+                             "Violence": "Do you agree or disagree with the following statement: This comment calls for using violence against the group(s) you previously identified.", 
+                             "Genocide": "Do you agree or disagree with the following statement: This comment calls for the deliberate killing of a large group of people from the group(s) you previously identified.",
+                             "Attack-Defend": "Is the comment attacking or defending the group(s) you previously identified?", 
+                             "Hate speech": "Does this comment contain hate speech, defined as “bias-motivated, hostile and malicious language targeted at a person/group because of their actual or perceived innate characteristics, especially when the group is unnecessarily labeled?"}
+        
+        attribute_response_options = {"Sentiment": "Strongly negative, somewhat negative, neutral, somewhat positive, strongly positive",
+                                      "Respect": "Strongly disrespectful, disrespectful, neutral, respectful, strongly respectful", 
+                                      "Insult": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "Humiliate": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "Status": "Strongly inferior, inferior, neither superiornor inferior, superior, strongly superior", 
+                                      "Dehumanize": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "Violence": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "Genocide": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "Attack-Defend": "Strongly defending, defending, neither defending nor attacking, attacking, strongly attacking", 
+                                      "Hate speech": "Yes, no, unclear"}
+        
         system_prompt = (
-            "You are a data annotation assistant. "
-            "You help label text using: Sentiment, Respect, Insult, Humiliate, "
-            "Status, Dehumanize, Violence, Genocide, Attack Defend, Hatespeech. "
-            "Use retrieved examples to guide answers."
+            "You are a data annotation assistant. You are given a comment. "
+            "First, is the comment directed at or about any individuals or groups based on race/ethnicity, religion, national origin or citizenship status, gender, sexual orientation, age, disability status, political identity. You can also say none."
+            "Next, based on the identified groups, identify what subgroups from this dictionary the comment targets. "
+            "{Race or ethnicity: Black or African American, Latino or non-white Hispanic, Asian, Middle Eastern, Native American or Alaska Native, Pacific Islander, Non-hispanic white"
+            " Religion:  Jews, Christians, Buddhists, Hindus, Mormons, Atheists, Muslims" 
+            " National origin or citizenship status: A specific country, immigrant, migrant worker, undocumented person"
+            " Gender identity: Women, men, non-binary or third gender, transgender women, transgender men, transgender (unspecified)"
+            " Sexual orientation: Bisexual, gay, lesbian, heterosexual",
+            " Age: Children (0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)"
+            " Disability status: People with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability}"
+            " Output the subgroups that were targeted through this comment, in this format: 'Subgroup 1,Subgroup 2,...,Subgroup N'"  
         )
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Context:\n{context}\n\nUser: {user_query}"}
+            {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}"}
         ]
-
+        
         try:
             response = await asyncio.to_thread(
                 self.client.chat.completions.create,
@@ -163,13 +196,43 @@ class DataAnnotationRAG:
                 messages=messages,
                 max_tokens=200,
                 temperature=0.4
-            )
-
-            return response.choices[0].message.content
-
+            )      
         except Exception as e:
             print(f"LLM error: {e}")
             return "Sorry, there was a problem generating a response."
+        
+        llm_subgroups = response.choices[0].message.content.split(",")
+
+        
+        for attribute in enumerate(attributes):
+            system_prompt = (
+                "You are a data annotation assistant. You are given a comment."
+                f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options[attribute]}"
+                f" Here are the subgroups that are targeted: {llm_subgroups.join(",")}"  
+                " Second, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment according to the attribute. "
+                f" Third, output the response you select and the (if it exists) the options that comes before and after your answer in {attribute_response_options[attribute]}. Make sure that your output is the response options in a comma seperated format." 
+            )
+            
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttribute: {attribute}"}
+            ]
+
+            try:
+                response = await asyncio.to_thread(
+                    self.client.chat.completions.create,
+                    model=self.llm_model,
+                    messages=messages,
+                    max_tokens=200,
+                    temperature=0.4
+                )
+                
+                llm_suggestions[attribute] = response.choices[0].message.content
+                
+            except Exception as e:
+                print(f"LLM error: {e}")
+                return "Sorry, there was a problem generating a response."
 
 
 def test_agent():

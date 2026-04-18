@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 class Query(BaseModel):
-    query: str
+    text: str
+    attributes: list[str]
 
 class Response(BaseModel):
     response: str
@@ -31,6 +32,6 @@ app.add_middleware(
 @app.post("/chat")
 async def get_answer(query: Query, request: Request):
     agent = request.app.state.agent
-    response = await agent.get_response(query.query)
+    response = await agent.get_response(query.text, query.attributes)
     return Response(response=response)
     
