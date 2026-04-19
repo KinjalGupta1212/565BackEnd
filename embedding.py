@@ -24,7 +24,8 @@ def get_db_vectorstore():
   
   documents = []
   for row in df.itertuples(index=False):
-    documents.append(f"Text: {row.text}, Platform: {row.platform}, Sentiment: {row.sentiment}, Respect: {row.respect}, Insult: {row.insult}, Humiliate: {row.humiliate}, Status: {row.status}, Dehumanize: {row.dehumanize}, Violence: {row.violence}, Genocide: {row.genocide}, Attack Defend: {row.attack_defend}, Hate Speech: {row.hatespeech}")
+    if f"{row.text}" not in documents:
+      documents.append(f"{row.text}")
   
 #   with open('general_annotation_guidelines.txt', 'r') as f:
 #       documents.append(f.read())

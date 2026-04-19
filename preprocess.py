@@ -44,6 +44,7 @@ def load_data():
     
   # })
   print(df.describe())
+  df.to_csv("measure_hate_speech.csv")
   return df
   
 
