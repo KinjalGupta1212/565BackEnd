@@ -10,34 +10,26 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 import traceback
 load_dotenv()
 
-
 class DataAnnotationRAG:
     def __init__(self):
         # OpenAI client
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.llm_model  = os.getenv("LLM_MODEL", "gpt-4o")
 
-        # ----------------------------
-        # STEP 1: DOWNLOAD CHROMA DB
-        # ----------------------------
+        # download chroma DB
         # self.download_directory("rag-chatbot-bucket-565", "./chroma_db")
 
-        # ----------------------------
-        # STEP 2: LOAD EMBEDDINGS MODEL
-        # ----------------------------
+        # embeddings model
         embeddings = SentenceTransformerEmbeddingFunction(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu"
         )
 
-        # ----------------------------
-        # STEP 3: LOAD VECTOR DB
-        # ----------------------------
+        # load vector DB
         client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = client.get_collection(name="data-annotation", embedding_function=embeddings)
         self.unaggregated_df = pd.read_csv("measure_hate_speech.csv")
 
-    # FIXED: must include self
     def download_directory(self, bucket, local_dir):
         s3 = boto3.client("s3")
         os.makedirs(local_dir, exist_ok=True)
@@ -60,8 +52,6 @@ class DataAnnotationRAG:
 
     async def get_response(self, user_query, attributes, history=None):
         context = await self.retrieve_context(user_query)
-
-        final_response = {}
        
         #for each unique comment, go to dataframe and get all annotators annotations
         #aggregate the annotations for each requested attribute 
@@ -69,16 +59,18 @@ class DataAnnotationRAG:
 
         example_mean_labels = {}
 
-        attribute_response_options_list = {"sentiment": ["Strongly negative", "somewhat negative", "neutral", "somewhat positive", "strongly positive"],
-                                      "respect": ["Strongly disrespectful", "disrespectful", "neutral", "respectful", "strongly respectful"], 
-                                      "insult": ["Strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
-                                      "humiliate": ["Strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
-                                      "status": ["Strongly inferior", "inferior", "neither superiornor inferior", "superior", "strongly superior"], 
-                                      "dehumanize": ["Strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
-                                      "violence": ["Strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
-                                      "genocide": ["Strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
-                                      "attack_defend": ["Strongly defending", "defending", "neither defending nor attacking", "attacking", "strongly attacking"],
-                                      "hatespeech": ["Yes", "no", "unclear"]
+        final_response = {}
+
+        attribute_response_options_list = {"sentiment": ["strongly negative", "somewhat negative", "neutral", "somewhat positive", "strongly positive"],
+                                      "respect": ["strongly disrespectful", "disrespectful", "neutral", "respectful", "strongly respectful"], 
+                                      "insult": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
+                                      "humiliate": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
+                                      "status": ["strongly inferior", "inferior", "neither superiornor inferior", "superior", "strongly superior"], 
+                                      "dehumanize": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
+                                      "violence": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
+                                      "genocide": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
+                                      "attack_defend": ["strongly defending", "defending", "neither defending nor attacking", "attacking", "strongly attacking"],
+                                      "hatespeech": ["yes", "no", "unclear"]
         }        
         
         for comment in context:
@@ -94,7 +86,8 @@ class DataAnnotationRAG:
             numerical_responses = s.tolist()
             categorical_responses = []
             for i, attribute in enumerate(attributes):
-                categorical_responses.append(attribute_response_options_list[attribute][numerical_responses[i]])
+                len_resp_opt_list = len(attribute_response_options_list[attribute])
+                categorical_responses.append(attribute_response_options_list[attribute][len_resp_opt_list-numerical_responses[i]-1])
         
             example_mean_labels[comment] = categorical_responses
 
@@ -112,16 +105,16 @@ class DataAnnotationRAG:
                              "attack_defend": "Is the comment attacking or defending the group(s) you previously identified?", 
                              "hatespeech": "Does this comment contain hate speech, defined as “bias-motivated, hostile and malicious language targeted at a person/group because of their actual or perceived innate characteristics, especially when the group is unnecessarily labeled?"}
         
-        attribute_response_options_string = {"sentiment": "Strongly negative, somewhat negative, neutral, somewhat positive, strongly positive",
-                                      "respect": "Strongly disrespectful, disrespectful, neutral, respectful, strongly respectful", 
-                                      "insult": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "humiliate": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "status": "Strongly inferior, inferior, neither superiornor inferior, superior, strongly superior", 
-                                      "dehumanize": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "violence": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "genocide": "Strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "attack_defend": "Strongly defending, defending, neither defending nor attacking, attacking, strongly attacking", 
-                                      "hatespeech": "Yes, no, unclear"}
+        attribute_response_options_string = {"sentiment": "strongly negative, somewhat negative, neutral, somewhat positive, strongly positive",
+                                      "respect": "strongly disrespectful, disrespectful, neutral, respectful, strongly respectful", 
+                                      "insult": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "humiliate": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "status": "strongly inferior, inferior, neither superiornor inferior, superior, strongly superior", 
+                                      "dehumanize": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "violence": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "genocide": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
+                                      "attack_defend": "strongly defending, defending, neither defending nor attacking, attacking, strongly attacking", 
+                                      "hatespeech": "yes, no, unclear"}
         
         system_prompt = (
             "You are a data annotation assistant. You are given a comment. "
@@ -162,17 +155,17 @@ class DataAnnotationRAG:
         print(llm_subgroups)
         #the list will contain the suggestion for each attribute: [["agree", "strongly agree"], ["disagree", "neutral", "agree"],...]
         example_mean_labels["suggestion"] = []
-
-        guiding_questions = {}
-        guiding_questions["questions"] = []
         
         for attribute in attributes:
+            final_response[attribute] = {}
+            guiding_questions = {}
+            guiding_questions["questions"] = []
             system_prompt = (
                 "You are a data annotation assistant. You are given a comment."
                 f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options_string[attribute]}"
                 f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
                 " Second, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment according to the attribute. "
-                f" Third, output the response you select and the (if it exists) the options that comes before and after your answer in {attribute_response_options_string[attribute]}." 
+                f" Third, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string[attribute]}. If the attribute is \"hatespeech\", you should only output the response you select." 
                 "Your final output should be formatted in JSON like this: { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}"
             )
             
@@ -192,7 +185,6 @@ class DataAnnotationRAG:
                     temperature=0.4
                 )
                 response_dict = json.loads(response.choices[0].message.content)
-                print("DONE WITH SECOND API CALL")
 
                 example_mean_labels["suggestion"].append(response_dict["Response"])
                 guiding_questions["questions"].append(response_dict["Questions"])
@@ -202,51 +194,52 @@ class DataAnnotationRAG:
                 similar_comment_count = 0
                 disagreement_comment_count = 0
                 
-                for i, comment in enumerate(unique_comments_list):
-                    
+                for i, comment in enumerate(unique_comments_list): 
                     all_annotations = self.unaggregated_df.loc[self.unaggregated_df['text'] == comment]
                     range_val = all_annotations[attribute].max() - all_annotations[attribute].min()
-                    print(range_val)
                     if range_val <= 1.0 and similar_comment_count < 2:
                         similar_comment_count += 1
                         similar_comments.append(comment)
-                        print("IF COND")
-                        print(comment)
-                        print(similar_comment_count)
-                    else:
+                    elif range_val > 1.0 and disagreement_comment_count < 2:
                         disagreement_distribution_per_comment[comment] = {}
                         for response_option in attribute_response_options_list[attribute]:
                             disagreement_distribution_per_comment[comment][response_option] = 0
                         for _, row in all_annotations.iterrows():
-                            print(row['comment_id'])
                             len_of_response_options_list = len(attribute_response_options_list[attribute])
                             annotator_rating = int(row[attribute])
-                            disagreement_distribution_per_comment[comment][attribute_response_options_list[attribute][len_of_response_options_list-annotator_rating]] += 1 
+                            disagreement_distribution_per_comment[comment][attribute_response_options_list[attribute][len_of_response_options_list-annotator_rating-1]] += 1 
                         disagreement_comment_count += 1
-                        print("ELSE COND")
-                        print(comment)
-                        print(disagreement_comment_count)
-                        if disagreement_comment_count >= 2:
-                            break
-                    # else:
-                    #     break       
+
+                    if similar_comment_count >= 2 and disagreement_comment_count >= 2:
+                        break   
             except Exception as e:
                 print(f"LLM error: {e}")
                 traceback.print_exc()
                 return "Sorry, there was a problem generating a response."
-            
-            second_response = response.choices[0].message.content.split(",")
-            print(second_response)
-            print(similar_comments)
-            print(disagreement_distribution_per_comment)
 
+        
+            final_response[attribute]["guiding_questions"] = guiding_questions
+            final_response[attribute]["similar_comments"] = similar_comments
+            final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment
+        
+        final_response["table_info"] = example_mean_labels
+        final_response["targeted_subgroups"] = llm_subgroups
+        return final_response
 
 def test_agent():
     agent = DataAnnotationRAG()
 
-    response = asyncio.run(agent.get_response("I hate women and kids", ["sentiment"]))
-    # print(response)
-
+    response = asyncio.run(agent.get_response("I hate people from India. I want to hit them.", ["sentiment", 
+                                                                                                "respect",
+                                                                                                "insult",
+                                                                                                "humiliate",
+                                                                                                "status",
+                                                                                                "dehumanize",
+                                                                                                "violence",
+                                                                                                "genocide",
+                                                                                                "attack_defend",
+                                                                                                "hatespeech"]))
+    print(response)
 
 if __name__ == "__main__":
     test_agent()

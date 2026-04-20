@@ -17,27 +17,11 @@ def get_db_vectorstore():
     device="cpu"
   ))
   df = load_data()
-
-  
-  # for each row in the dataframe, we want to make a string like:
-  # "Text: row['text'], Platform: row['platform'], "
   
   documents = []
   for row in df.itertuples(index=False):
     if f"{row.text}" not in documents:
       documents.append(f"{row.text}")
-  
-#   with open('general_annotation_guidelines.txt', 'r') as f:
-#       documents.append(f.read())
-
-#   with open('twitter_guidelines.txt', 'r') as f:
-#       documents.append(f.read())
-  
-#   with open('youtube_guidelines.txt', 'r') as f:
-#       documents.append(f.read())
-  
-#   with open('reddit_guidelines.txt', 'r') as f:
-#       documents.append(f.read())
 
   max_batch_size = 5000
   for start_idx in range(0, len(documents), max_batch_size):
