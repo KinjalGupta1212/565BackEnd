@@ -11,15 +11,8 @@ class Query(BaseModel):
     text: str
     attributes: list[str]
 
-
-class GuidingQuestions(BaseModel):
-    """Per-attribute LLM-generated annotator prompts (one inner list per attribute pass)."""
-
-    questions: list[list[str]]
-
-
 class AttributeInsight(BaseModel):
-    guiding_questions: GuidingQuestions
+    questions: list[str]
     similar_comments: list[str]
     disagreeing_comments: dict[str, dict[str, int]]
 
@@ -30,7 +23,7 @@ class ChatAnnotationResponse(BaseModel):
     one nested object per requested attribute, plus table_info and targeted_subgroups.
     """
 
-    table_info: dict[str, list[str] | list[list[str]]]
+    table_info: dict[str, dict[str, list[str]]]
     targeted_subgroups: list[str]
     attributes: dict[str, AttributeInsight]
 
