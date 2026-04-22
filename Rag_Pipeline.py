@@ -127,7 +127,8 @@ class DataAnnotationRAG:
             " Sexual orientation: Bisexual, gay, lesbian, heterosexual"
             " Age: Children (0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)"
             " Disability status: People with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability}"
-            " Output the subgroups in JSON format."  
+            " Output the subgroups in this JSON format: {\"group1\": [\"subgroup1\", \"subgroup2\"], \"group2\": [...]}"
+            " If there are no groups or subgroups targeted in the comment, output: {\"none\": [\"none\"]}"  
         )
 
         messages = [
@@ -149,7 +150,8 @@ class DataAnnotationRAG:
             traceback.print_exc()
             return "Sorry, there was a problem generating a response."
         
-        llm_subgroups = response.choices[0].message.content.split(",")
+        # llm_subgroups = response.choices[0].message.content.split(",")
+        llm_subgroups = json.loads(response.choices[0].message.content)
         
         print("DONE WITH FIRST API CALL")
         print(llm_subgroups)
@@ -162,7 +164,11 @@ class DataAnnotationRAG:
                         " You are asked to annotate the comment on multiple attributes"
                         f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
                         " Second, for each attribute, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment. "
-                        f" Third, for each attribute, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string} for that specific attribute. If the attribute is \"hatespeech\", you should only output the response you select." 
+                        f"Third, for each attribute, select the most appropriate response from {attribute_response_options_string} for that attribute. "
+                        "Always return the response as a list of strings. "
+                        "For non-hatespeech attributes, include the selected response plus the option immediately before and after it in the scale (if they exist). "
+                        "For hatespeech, still return a list containing only the selected response. "
+                        "Do not return strings or single values—everything must always be a list."
                         "Your final output should be formatted in JSON like this: {\"attribute1\": { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}, \"attribute2\": {...}}"
                     )
 
