@@ -6,3 +6,4 @@ pandas
 python-dotenv
 uvicorn[standard]
 sentence_transformers
+boto3
