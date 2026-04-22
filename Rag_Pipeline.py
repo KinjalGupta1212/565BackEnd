@@ -141,7 +141,7 @@ class DataAnnotationRAG:
                 model=self.llm_model,
                 messages=messages,
                 response_format={"type": "json_object"},
-                max_tokens=200,
+                max_tokens=1200,
                 temperature=0.4
             )      
         except Exception as e:
@@ -180,7 +180,13 @@ class DataAnnotationRAG:
                 max_tokens=200,
                 temperature=0.4
             )
-            response_dict = json.loads(response.choices[0].message.content)
+            # response_dict = json.loads(response.choices[0].message.content)
+            try:
+                response_dict = json.loads(response.choices[0].message.content)
+            except json.JSONDecodeError:
+                print("RAW LLM OUTPUT:\n", response.choices[0].message.content)
+                return {"error": "Invalid JSON from LLM", "raw": response.choices[0].message.content}
+            
             for attribute in attributes:
             
                 example_mean_labels["LLM Suggestion For Your Comment"][attribute] = response_dict[attribute]["Response"]
