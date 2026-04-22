@@ -24,7 +24,7 @@ class ChatAnnotationResponse(BaseModel):
     """
 
     table_info: dict[str, dict[str, list[str]]]
-    targeted_subgroups: list[str]
+    targeted_subgroups: dict[str, list[str]]
     attributes: dict[str, AttributeInsight]
 
     @model_validator(mode="before")
