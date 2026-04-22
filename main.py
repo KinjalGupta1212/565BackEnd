@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = ["*"] #frontend url
+origins = ["https://annotationragchatbot.netlify.app"] #frontend url
 
 app.add_middleware(
     CORSMiddleware,

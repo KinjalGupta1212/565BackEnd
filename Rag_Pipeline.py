@@ -65,7 +65,7 @@ class DataAnnotationRAG:
                                       "respect": ["strongly disrespectful", "disrespectful", "neutral", "respectful", "strongly respectful"], 
                                       "insult": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
                                       "humiliate": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
-                                      "status": ["strongly inferior", "inferior", "neither superiornor inferior", "superior", "strongly superior"], 
+                                      "status": ["strongly inferior", "inferior", "neither superior nor inferior", "superior", "strongly superior"], 
                                       "dehumanize": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"], 
                                       "violence": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
                                       "genocide": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
@@ -109,7 +109,7 @@ class DataAnnotationRAG:
                                       "respect": "strongly disrespectful, disrespectful, neutral, respectful, strongly respectful", 
                                       "insult": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
                                       "humiliate": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
-                                      "status": "strongly inferior, inferior, neither superiornor inferior, superior, strongly superior", 
+                                      "status": "strongly inferior, inferior, neither superior nor inferior, superior, strongly superior", 
                                       "dehumanize": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
                                       "violence": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
                                       "genocide": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
@@ -154,39 +154,37 @@ class DataAnnotationRAG:
         print("DONE WITH FIRST API CALL")
         print(llm_subgroups)
         #the list will contain the suggestion for each attribute: [["agree", "strongly agree"], ["disagree", "neutral", "agree"],...]
-        example_mean_labels["suggestion"] = {}
-        
-        for attribute in attributes:
-            final_response[attribute] = {}
-            guiding_questions = {}
-            guiding_questions= []
-            system_prompt = (
-                "You are a data annotation assistant. You are given a comment."
-                f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options_string[attribute]}"
-                f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
-                " Second, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment according to the attribute. "
-                f" Third, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string[attribute]}. If the attribute is \"hatespeech\", you should only output the response you select." 
-                "Your final output should be formatted in JSON like this: { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}"
-            )
-            
+        example_mean_labels["LLM Suggestion For Your Comment"] = {}
 
-            messages = [
+        system_prompt = (
+                        "You are a data annotation assistant. You are given a comment."
+                        f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer the questions needed from: {attribute_prompts}. Select the appropriate response needed for the attributes from: {attribute_response_options_string}"
+                        " You are asked to annotate the comment on multiple attributes"
+                        f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
+                        " Second, for each attribute, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment. "
+                        f" Third, for each attribute, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string} for that specific attribute. If the attribute is \"hatespeech\", you should only output the response you select." 
+                        "Your final output should be formatted in JSON like this: {\"attribute1\": { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}, \"attribute2\": {...}}"
+                    )
+
+        messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttribute: {attribute}"}
+                {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttributes: {attributes}"}
             ]
-
-            try:
-                response = await asyncio.to_thread(
-                    self.client.chat.completions.create,
-                    model=self.llm_model,
-                    messages=messages,
-                    response_format={"type": "json_object"},
-                    max_tokens=200,
-                    temperature=0.4
-                )
-                response_dict = json.loads(response.choices[0].message.content)
-                example_mean_labels["suggestion"][attribute] = response_dict["Response"]
-                guiding_questions = response_dict["Questions"]
+        
+        try:
+            response = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                model=self.llm_model,
+                messages=messages,
+                response_format={"type": "json_object"},
+                max_tokens=200,
+                temperature=0.4
+            )
+            response_dict = json.loads(response.choices[0].message.content)
+            for attribute in attributes:
+            
+                example_mean_labels["LLM Suggestion For Your Comment"][attribute] = response_dict[attribute]["Response"]
+                guiding_questions = response_dict[attribute]["Questions"]
 
                 similar_comments = []
                 disagreement_distribution_per_comment = {}
@@ -210,16 +208,82 @@ class DataAnnotationRAG:
                         disagreement_comment_count += 1
 
                     if similar_comment_count >= 2 and disagreement_comment_count >= 2:
-                        break   
-            except Exception as e:
-                print(f"LLM error: {e}")
-                traceback.print_exc()
-                return "Sorry, there was a problem generating a response."
+                        break  
+
+                final_response[attribute]["questions"] = guiding_questions
+                final_response[attribute]["similar_comments"] = similar_comments
+                final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment        
+        except Exception as e:
+            print(f"LLM error: {e}")
+            traceback.print_exc()
+            return "Sorry, there was a problem generating a response."
+
+            
+
+        # for attribute in attributes:
+        #     final_response[attribute] = {}
+        #     guiding_questions = {}
+        #     guiding_questions= []
+        #     system_prompt = (
+        #         "You are a data annotation assistant. You are given a comment."
+        #         f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options_string[attribute]}"
+        #         f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
+        #         " Second, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment according to the attribute. "
+        #         f" Third, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string[attribute]}. If the attribute is \"hatespeech\", you should only output the response you select." 
+        #         "Your final output should be formatted in JSON like this: { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}"
+        #     )
+            
+
+        #     messages = [
+        #         {"role": "system", "content": system_prompt},
+        #         {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttribute: {attribute}"}
+        #     ]
+
+        #     try:
+        #         response = await asyncio.to_thread(
+        #             self.client.chat.completions.create,
+        #             model=self.llm_model,
+        #             messages=messages,
+        #             response_format={"type": "json_object"},
+        #             max_tokens=200,
+        #             temperature=0.4
+        #         )
+        #         response_dict = json.loads(response.choices[0].message.content)
+        #         example_mean_labels["LLM Suggestion For Your Comment"][attribute] = response_dict["Response"]
+        #         guiding_questions = response_dict["Questions"]
+
+        #         similar_comments = []
+        #         disagreement_distribution_per_comment = {}
+        #         similar_comment_count = 0
+        #         disagreement_comment_count = 0
+                
+        #         for i, comment in enumerate(unique_comments_list): 
+        #             all_annotations = self.unaggregated_df.loc[self.unaggregated_df['text'] == comment]
+        #             range_val = all_annotations[attribute].max() - all_annotations[attribute].min()
+        #             if range_val <= 1.0 and similar_comment_count < 2:
+        #                 similar_comment_count += 1
+        #                 similar_comments.append(comment)
+        #             elif range_val > 1.0 and disagreement_comment_count < 2:
+        #                 disagreement_distribution_per_comment[comment] = {}
+        #                 for response_option in attribute_response_options_list[attribute]:
+        #                     disagreement_distribution_per_comment[comment][response_option] = 0
+        #                 for _, row in all_annotations.iterrows():
+        #                     len_of_response_options_list = len(attribute_response_options_list[attribute])
+        #                     annotator_rating = int(row[attribute])
+        #                     disagreement_distribution_per_comment[comment][attribute_response_options_list[attribute][len_of_response_options_list-annotator_rating-1]] += 1 
+        #                 disagreement_comment_count += 1
+
+        #             if similar_comment_count >= 2 and disagreement_comment_count >= 2:
+        #                 break   
+        #     except Exception as e:
+        #         print(f"LLM error: {e}")
+        #         traceback.print_exc()
+        #         return "Sorry, there was a problem generating a response."
 
         
-            final_response[attribute]["questions"] = guiding_questions
-            final_response[attribute]["similar_comments"] = similar_comments
-            final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment
+        #     final_response[attribute]["questions"] = guiding_questions
+        #     final_response[attribute]["similar_comments"] = similar_comments
+        #     final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment
         
         final_response["table_info"] = example_mean_labels
         final_response["targeted_subgroups"] = llm_subgroups
