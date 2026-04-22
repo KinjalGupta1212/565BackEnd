@@ -84,10 +84,10 @@ class DataAnnotationRAG:
             s = all_annotations[attributes].mean().round(0).astype(int)
             
             numerical_responses = s.tolist()
-            categorical_responses = []
+            categorical_responses = {}
             for i, attribute in enumerate(attributes):
                 len_resp_opt_list = len(attribute_response_options_list[attribute])
-                categorical_responses.append(attribute_response_options_list[attribute][len_resp_opt_list-numerical_responses[i]-1])
+                categorical_responses[attribute] = [(attribute_response_options_list[attribute][len_resp_opt_list-numerical_responses[i]-1])]
         
             example_mean_labels[comment] = categorical_responses
 
@@ -154,12 +154,12 @@ class DataAnnotationRAG:
         print("DONE WITH FIRST API CALL")
         print(llm_subgroups)
         #the list will contain the suggestion for each attribute: [["agree", "strongly agree"], ["disagree", "neutral", "agree"],...]
-        example_mean_labels["suggestion"] = []
+        example_mean_labels["suggestion"] = {}
         
         for attribute in attributes:
             final_response[attribute] = {}
             guiding_questions = {}
-            guiding_questions["questions"] = []
+            guiding_questions= []
             system_prompt = (
                 "You are a data annotation assistant. You are given a comment."
                 f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options_string[attribute]}"
@@ -185,9 +185,8 @@ class DataAnnotationRAG:
                     temperature=0.4
                 )
                 response_dict = json.loads(response.choices[0].message.content)
-
-                example_mean_labels["suggestion"].append(response_dict["Response"])
-                guiding_questions["questions"].append(response_dict["Questions"])
+                example_mean_labels["suggestion"][attribute] = response_dict["Response"]
+                guiding_questions = response_dict["Questions"]
 
                 similar_comments = []
                 disagreement_distribution_per_comment = {}
@@ -218,7 +217,7 @@ class DataAnnotationRAG:
                 return "Sorry, there was a problem generating a response."
 
         
-            final_response[attribute]["guiding_questions"] = guiding_questions
+            final_response[attribute]["questions"] = guiding_questions
             final_response[attribute]["similar_comments"] = similar_comments
             final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment
         
@@ -229,16 +228,7 @@ class DataAnnotationRAG:
 def test_agent():
     agent = DataAnnotationRAG()
 
-    response = asyncio.run(agent.get_response("I hate people from India. I want to hit them.", ["sentiment", 
-                                                                                                "respect",
-                                                                                                "insult",
-                                                                                                "humiliate",
-                                                                                                "status",
-                                                                                                "dehumanize",
-                                                                                                "violence",
-                                                                                                "genocide",
-                                                                                                "attack_defend",
-                                                                                                "hatespeech"]))
+    response = asyncio.run(agent.get_response("I hate people from India. I want to hit them.", ["sentiment", "respect"]))
     print(response)
 
 if __name__ == "__main__":
