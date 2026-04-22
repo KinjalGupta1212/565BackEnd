@@ -177,7 +177,7 @@ class DataAnnotationRAG:
                 model=self.llm_model,
                 messages=messages,
                 response_format={"type": "json_object"},
-                max_tokens=200,
+                max_tokens=1200,
                 temperature=0.4
             )
             # response_dict = json.loads(response.choices[0].message.content)
