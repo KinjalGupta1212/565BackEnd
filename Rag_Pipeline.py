@@ -209,7 +209,7 @@ class DataAnnotationRAG:
 
                     if similar_comment_count >= 2 and disagreement_comment_count >= 2:
                         break  
-
+                final_response[attribute] = {}
                 final_response[attribute]["questions"] = guiding_questions
                 final_response[attribute]["similar_comments"] = similar_comments
                 final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment        
