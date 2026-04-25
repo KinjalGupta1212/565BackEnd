@@ -70,7 +70,7 @@ class DataAnnotationRAG:
                                       "violence": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
                                       "genocide": ["strongly disagree", "disagree", "neither disagree nor agree", "agree", "strongly agree"],
                                       "attack_defend": ["strongly defending", "defending", "neither defending nor attacking", "attacking", "strongly attacking"],
-                                      "hatespeech": ["yes", "no", "unclear"]
+                                      "hatespeech": ["yes", "unclear", "no"]
         }        
         
         for comment in context:
@@ -114,7 +114,7 @@ class DataAnnotationRAG:
                                       "violence": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
                                       "genocide": "strongly disagree, disagree, neither disagree nor agree, agree, strongly agree", 
                                       "attack_defend": "strongly defending, defending, neither defending nor attacking, attacking, strongly attacking", 
-                                      "hatespeech": "yes, no, unclear"}
+                                      "hatespeech": "yes, unclear, no"}
         
         system_prompt = (
             "You are a data annotation assistant. You are given a comment. "

@@ -4,6 +4,7 @@ from chromadb.config import Settings
 from preprocess import load_data
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from dotenv import load_dotenv
+import pandas as pd
 
 load_dotenv()
 
@@ -19,6 +20,12 @@ def get_db_vectorstore():
   df = load_data()
   
   documents = []
+  
+  # fiter comments that our annotators will annotate
+  annotation_comments_df = pd.read_csv("annotation_comments.csv")
+  comments = set(annotation_comments_df['text'])
+  df = df[~df['text'].isin(comments)]
+  
   for row in df.itertuples(index=False):
     if f"{row.text}" not in documents:
       documents.append(f"{row.text}")
