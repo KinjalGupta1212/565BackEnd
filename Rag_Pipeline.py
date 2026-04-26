@@ -119,21 +119,40 @@ class DataAnnotationRAG:
         system_prompt = (
             "You are a data annotation assistant. You are given a comment. "
             "First, is the comment directed at or about any individuals or groups based on Race or ethnicity, Religion, National origin or citizenship status, Gender identity, Sexual orientation, Age, Disability status, Political identity. You can also say none. "
-            "Next, determine whether the comment is directed at, about, references, praises, criticizes, stereotypes, insults, or discusses any individual, group or subgroup based on the dictionary below. "
-            "This includes positive, negative, neutral, indirect, slang, abbreviated, or explicit references. "
-            "A group DOES NOT need to be attacked to count. "
-            "If the comment simply mentions or discusses a listed group, include it. "
-            "{Race or ethnicity: Black or African American, Latino or non-white Hispanic, Asian, Middle Eastern, Native American or Alaska Native, Pacific Islander, Non-hispanic white "
-            " Religion:  Jews, Christians, Buddhists, Hindus, Mormons, Atheists, Muslims" 
-            " National origin or citizenship status: a specific country, immigrant, migrant worker, undocumented person"
-            " Gender identity: women, men, non-binary or third gender, transgender women, transgender men, transgender (unspecified)"
-            " Sexual orientation: bisexual, gay, lesbian, heterosexual"
-            " Age: Children (0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)"
-            " Disability status: people with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability"
-            " Political identity: alt-right (Alternative Right), communist, conservative, democrat, green, leftist, liberal, libertarian, republican, socialist, other}"
-            " Output the subgroups in this JSON format: {\"group1\": [\"subgroup1\", \"subgroup2\"], \"group2\": [...]}"
-            " If there are no groups or subgroups targeted in the comment, output: {\"none\": [\"none\"]}"  
+            "The dictionary below has keys that are equal to demographic groups, and values that list the subgroups within those demographic groups"
+            "Next, determine whether the comment is directed at, about, references, praises, criticizes, stereotypes, insults, or discusses any individual from a group or subgroup, or a group or subgroup themselves, based on the dictionary below. "
+            
+            # "This includes positive, negative, neutral, indirect, slang, abbreviated, or explicit references. "
+            # "A group DOES NOT need to be attacked to count. "
+            # "If the comment simply mentions or discusses a listed group, include it. "
+            "{Race or ethnicity: [Black or African American, Latino or non-white Hispanic, Asian, Middle Eastern, Native American or Alaska Native, Pacific Islander, Non-hispanic white], "
+            " Religion: [Jews, Christians, Buddhists, Hindus, Mormons, Atheists, Muslims]," 
+            " National origin or citizenship status: [a specific country, immigrant, migrant worker, undocumented person],"
+            " Gender identity: [women, men, non-binary or third gender, transgender women, transgender men, transgender (unspecified)],"
+            " Sexual orientation: [bisexual, gay, lesbian, heterosexual],"
+            " Age: Children [(0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)],"
+            " Disability status: [people with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability],"
+            " Political identity: [alt-right (Alternative Right), communist, conservative, democrat, green, leftist, liberal, libertarian, republican, socialist, other]}"
+            # " none: [none]}"
+            " Output the subgroups you selected AND the reasoning behind selecting these subgroups in JSON format using the OUTPUT RULES below."
+            "OUTPUT RULES: "
+            "1. Output ONLY valid JSON. "
+            "2. Each JSON key MUST be the exact demographic group name from the dictionary (e.g., \"Race or ethnicity\", \"Religion\", \"Political identity\"). "
+            "3. NEVER use placeholder labels like group1, group2, subgroup1, or subgroup2. "
+            "4. Each value must be a list of the exact subgroup names selected from that demographic group. "
+            "5. Include a \"reasoning\" key explaining why each subgroup was selected. "
+            "6. If NO demographic group, subgroup, individual, or identity category from the dictionary is targeted, referenced, mentioned, discussed, praised, criticized, stereotyped, or insulted in any way, output EXACTLY: {\"none\": [\"none\"]} "
+            "7. When outputting {\"none\": [\"none\"]}, do NOT include reasoning or any other keys. "
+            "8. Use ONLY keys from this set when applicable: Race or ethnicity, Religion, National origin or citizenship status, Gender identity, Sexual orientation, Age, Disability status, Political identity, reasoning. "
+            "9. Example valid output with group: {\"Political identity\": [\"democrat\"], \"reasoning\": \"The comment explicitly mentions Democrats, which maps to the political identity subgroup democrat.\"} "
+            "10. Example valid output with no group: {\"none\": [\"none\"]}"
+            #" Output the subgroups you selected AND the reasoning behind selecting these subgroups in this JSON format: {\"group1\": [\"subgroup1\", \"subgroup2\", ...], \"group2\": [...], ..., \"reasoning\": \"...\"}"
+            # " If there are no groups or subgroups targeted in the comment, output: {\"none\": [\"none\"]}"  
         )
+
+
+
+
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -156,9 +175,11 @@ class DataAnnotationRAG:
         
         # llm_subgroups = response.choices[0].message.content.split(",")
         llm_subgroups = json.loads(response.choices[0].message.content)
+        llm_subgroups_final = {k: v for k, v in llm_subgroups.items() if k != 'reasoning'}
+
         
         print("DONE WITH FIRST API CALL")
-        print(llm_subgroups)
+        print(llm_subgroups_final)
         #the list will contain the suggestion for each attribute: [["agree", "strongly agree"], ["disagree", "neutral", "agree"],...]
         example_mean_labels["LLM Suggestion For Your Comment"] = {}
 
@@ -235,13 +256,13 @@ class DataAnnotationRAG:
             return "Sorry, there was a problem generating a response."
 
         final_response["table_info"] = example_mean_labels
-        final_response["targeted_subgroups"] = llm_subgroups
+        final_response["targeted_subgroups"] = llm_subgroups_final
         return final_response
 
 def test_agent():
     agent = DataAnnotationRAG()
 
-    response = asyncio.run(agent.get_response("republicans are good", ["sentiment"]))
+    response = asyncio.run(agent.get_response("democrats are bad", ["sentiment"]))
     print(response)
 
 if __name__ == "__main__":
