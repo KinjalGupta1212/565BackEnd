@@ -118,16 +118,19 @@ class DataAnnotationRAG:
         
         system_prompt = (
             "You are a data annotation assistant. You are given a comment. "
-            "First, is the comment directed at or about any individuals or groups based on race/ethnicity, religion, national origin or citizenship status, gender, sexual orientation, age, disability status, political identity. You can also say none."
-            "Next, based on the identified groups, identify what subgroups from this dictionary the comment targets. "
-            "{Race or ethnicity: Black or African American, Latino or non-white Hispanic, Asian, Middle Eastern, Native American or Alaska Native, Pacific Islander, Non-hispanic white"
+            "First, is the comment directed at or about any individuals or groups based on Race or ethnicity, Religion, National origin or citizenship status, Gender identity, Sexual orientation, Age, Disability status, Political identity. You can also say none. "
+            "Next, determine whether the comment is directed at, about, references, praises, criticizes, stereotypes, insults, or discusses any individual, group or subgroup based on the dictionary below. "
+            "This includes positive, negative, neutral, indirect, slang, abbreviated, or explicit references. "
+            "A group DOES NOT need to be attacked to count. "
+            "If the comment simply mentions or discusses a listed group, include it. "
+            "{Race or ethnicity: Black or African American, Latino or non-white Hispanic, Asian, Middle Eastern, Native American or Alaska Native, Pacific Islander, Non-hispanic white "
             " Religion:  Jews, Christians, Buddhists, Hindus, Mormons, Atheists, Muslims" 
-            " National origin or citizenship status: A specific country, immigrant, migrant worker, undocumented person"
-            " Gender identity: Women, men, non-binary or third gender, transgender women, transgender men, transgender (unspecified)"
-            " Sexual orientation: Bisexual, gay, lesbian, heterosexual"
+            " National origin or citizenship status: a specific country, immigrant, migrant worker, undocumented person"
+            " Gender identity: women, men, non-binary or third gender, transgender women, transgender men, transgender (unspecified)"
+            " Sexual orientation: bisexual, gay, lesbian, heterosexual"
             " Age: Children (0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)"
-            " Disability status: People with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability}"
-            " Political identity: alt-right (Alternative Right), communist, conservative, democrat, green party, leftist, liberal, libertarian, republican, socialist, other"
+            " Disability status: people with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability"
+            " Political identity: alt-right (Alternative Right), communist, conservative, democrat, green, leftist, liberal, libertarian, republican, socialist, other}"
             " Output the subgroups in this JSON format: {\"group1\": [\"subgroup1\", \"subgroup2\"], \"group2\": [...]}"
             " If there are no groups or subgroups targeted in the comment, output: {\"none\": [\"none\"]}"  
         )
@@ -231,73 +234,6 @@ class DataAnnotationRAG:
             traceback.print_exc()
             return "Sorry, there was a problem generating a response."
 
-            
-
-        # for attribute in attributes:
-        #     final_response[attribute] = {}
-        #     guiding_questions = {}
-        #     guiding_questions= []
-        #     system_prompt = (
-        #         "You are a data annotation assistant. You are given a comment."
-        #         f" You are given 5 examples of similar comments. You are also given the groups and subgroups targeted in the comment. Use the examples and groups and subgroups as guidance to answer {attribute_prompts[attribute]}. Select your response from: {attribute_response_options_string[attribute]}"
-        #         f" Here are the subgroups that are targeted: {json.dumps(llm_subgroups)}"  
-        #         " Second, output 3 or 4 questions that guide the annotator through the reasoning needed to annotate the comment according to the attribute. "
-        #         f" Third, if the attribute is not \"hatespeech\", output the response you select and (if it exists) the options that comes before and after your answer in {attribute_response_options_string[attribute]}. If the attribute is \"hatespeech\", you should only output the response you select." 
-        #         "Your final output should be formatted in JSON like this: { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}"
-        #     )
-            
-
-        #     messages = [
-        #         {"role": "system", "content": system_prompt},
-        #         {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttribute: {attribute}"}
-        #     ]
-
-        #     try:
-        #         response = await asyncio.to_thread(
-        #             self.client.chat.completions.create,
-        #             model=self.llm_model,
-        #             messages=messages,
-        #             response_format={"type": "json_object"},
-        #             max_tokens=200,
-        #             temperature=0.4
-        #         )
-        #         response_dict = json.loads(response.choices[0].message.content)
-        #         example_mean_labels["LLM Suggestion For Your Comment"][attribute] = response_dict["Response"]
-        #         guiding_questions = response_dict["Questions"]
-
-        #         similar_comments = []
-        #         disagreement_distribution_per_comment = {}
-        #         similar_comment_count = 0
-        #         disagreement_comment_count = 0
-                
-        #         for i, comment in enumerate(unique_comments_list): 
-        #             all_annotations = self.unaggregated_df.loc[self.unaggregated_df['text'] == comment]
-        #             range_val = all_annotations[attribute].max() - all_annotations[attribute].min()
-        #             if range_val <= 1.0 and similar_comment_count < 2:
-        #                 similar_comment_count += 1
-        #                 similar_comments.append(comment)
-        #             elif range_val > 1.0 and disagreement_comment_count < 2:
-        #                 disagreement_distribution_per_comment[comment] = {}
-        #                 for response_option in attribute_response_options_list[attribute]:
-        #                     disagreement_distribution_per_comment[comment][response_option] = 0
-        #                 for _, row in all_annotations.iterrows():
-        #                     len_of_response_options_list = len(attribute_response_options_list[attribute])
-        #                     annotator_rating = int(row[attribute])
-        #                     disagreement_distribution_per_comment[comment][attribute_response_options_list[attribute][len_of_response_options_list-annotator_rating-1]] += 1 
-        #                 disagreement_comment_count += 1
-
-        #             if similar_comment_count >= 2 and disagreement_comment_count >= 2:
-        #                 break   
-        #     except Exception as e:
-        #         print(f"LLM error: {e}")
-        #         traceback.print_exc()
-        #         return "Sorry, there was a problem generating a response."
-
-        
-        #     final_response[attribute]["questions"] = guiding_questions
-        #     final_response[attribute]["similar_comments"] = similar_comments
-        #     final_response[attribute]["disagreeing_comments"] = disagreement_distribution_per_comment
-        
         final_response["table_info"] = example_mean_labels
         final_response["targeted_subgroups"] = llm_subgroups
         return final_response
@@ -305,7 +241,7 @@ class DataAnnotationRAG:
 def test_agent():
     agent = DataAnnotationRAG()
 
-    response = asyncio.run(agent.get_response("I hate people from India. I want to hit them.", ["sentiment", "respect"]))
+    response = asyncio.run(agent.get_response("republicans are good", ["sentiment"]))
     print(response)
 
 if __name__ == "__main__":
