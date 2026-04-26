@@ -127,6 +127,7 @@ class DataAnnotationRAG:
             " Sexual orientation: Bisexual, gay, lesbian, heterosexual"
             " Age: Children (0 - 12 years old), adolescents / teenagers (13 - 17), young adults / adults (18 - 39), middle-aged (40 - 64), seniors (65 or older)"
             " Disability status: People with physical disabilities (e.g., use of wheelchair), people with cognitive disorders (e.g., autism) or learning disabilities (e.g., Down syndrome), people with mental health problems (e.g., depression, addiction), visually impaired people, hearing impaired people, no specific disability}"
+            " Political identity: alt-right (Alternative Right), communist, conservative, democrat, green party, leftist, liberal, libertarian, republican, socialist, other"
             " Output the subgroups in this JSON format: {\"group1\": [\"subgroup1\", \"subgroup2\"], \"group2\": [...]}"
             " If there are no groups or subgroups targeted in the comment, output: {\"none\": [\"none\"]}"  
         )
