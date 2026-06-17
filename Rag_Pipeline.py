@@ -196,10 +196,18 @@ class DataAnnotationRAG:
                         "Do not return strings or single values—everything must always be a list."
                         "Your final output should be formatted in JSON like this: {\"attribute1\": { \"Questions\": [\"question1\", \"question2\",...], \"Response\": [\"responseoption1\", \"responseoption2\",...]}, \"attribute2\": {...}}"
                     )
-
+        
+        comment_ratings = []
+        for comment in unique_comments_list[:5]:
+            annotation_ratings = self.unaggregated_df.loc[self.unaggregated_df['text'] == comment]
+            annotation_ratings_aggregated = annotation_ratings[attributes].mean().round(0).astype(int)
+            
+            comment_ratings.append({"comment": comment,
+                                    "ratings": annotation_ratings_aggregated.to_dict()
+                                    })
         messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nComment: {user_query}\n\nAttributes: {attributes}"}
+                {"role": "user", "content": f"Context:\n{comment_ratings}\n\nComment: {user_query}\n\nAttributes: {attributes}"}
             ]
         
         try:
