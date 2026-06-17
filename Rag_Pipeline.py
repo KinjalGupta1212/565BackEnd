@@ -205,6 +205,7 @@ class DataAnnotationRAG:
             comment_ratings.append({"comment": comment,
                                     "ratings": annotation_ratings_aggregated.to_dict()
                                     })
+        print(comment_ratings)
         messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Context:\n{comment_ratings}\n\nComment: {user_query}\n\nAttributes: {attributes}"}
